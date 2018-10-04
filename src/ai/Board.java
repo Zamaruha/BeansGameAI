@@ -67,9 +67,9 @@ public class Board {
         if (stepIndex >= 6) {
             redPlayer = false;
         }
-       // get amount of beans
+        // get amount of beans
         int amount = gameState[insideStepIndex];
-       // System.out.println(insideStepIndex);
+        // System.out.println(insideStepIndex);
         gameState[insideStepIndex] = 0;
 
         // TODO remove

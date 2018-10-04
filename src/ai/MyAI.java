@@ -3,31 +3,34 @@ package ai;
 import java.util.ArrayList;
 
 public class MyAI extends AI {
-    byte LEVEL = 15;
-    Board original = new Board();
-    boolean redSide = false;
-    int bestMoveIndex = -1;
+    private Board board = new Board();
+    private boolean redSide = false;
+    private int bestMoveIndex = -1;
+    private final int ALPHA = -1000;
+    private final int BETA = 1000;
+    private byte LEVEL = 14; // max 0.9, avg .0
+    // private byte LEVEL = 15; // max - 4.0, avg - 1.2
+    // private byte LEVEL = 16; // max - 7.6, avg - 2.0
 
     @Override public String getName() {
         return "StandardAI";
     }
 
-    public int getMove(int enemyIndex) {
-        int index = 0;
-        // This Ai starts the game
-        if (enemyIndex < 1) {
-            redSide = true;
-        }
-        original.makeStep(enemyIndex);
-        index = getAlphaBeta();
-        original.makeStep(index);
+    @Override public int getMove(int enemyIndex) {
+        redSide = enemyIndex < 1 ? true : redSide;
+        makeStep(enemyIndex);
+        int index = getAlphaBetaIndex();
+        makeStep(index);
         return index;
     }
 
-    private int getAlphaBeta() {
-        bestMoveIndex = -1;
-        max(true, LEVEL, 0, -1000, 1000);
+    private void makeStep(int index) {
+        board.makeStep(index);
+    }
 
+    private int getAlphaBetaIndex() {
+        bestMoveIndex = -1;
+        max(true, LEVEL, 0, ALPHA, BETA);
         if (bestMoveIndex == -1) {
             System.out.println("END");
             return -1;
@@ -36,293 +39,274 @@ public class MyAI extends AI {
         }
     }
 
-    private int max(boolean myTurn, int depth, int move, int alpha, int beta) {
-        if (depth == 0 || !original.isAnyMoveLeft(myTurn, redSide)) {
-            return evaluateStep(move);
+    private int min(boolean myTurn, int depth, int moveIndex, int alpha, int beta) {
+        if (depth == 0 || !board.isAnyMoveLeft(myTurn, redSide)) {
+            return getStepHeuristic(moveIndex);
         }
-
-        int maxWert = alpha;
-        ArrayList<Integer> moves = original.getAllPossibleMoves(myTurn, redSide);
+        ArrayList<Integer> moves = board.getAllPossibleMoves(myTurn, redSide);
         while (!moves.isEmpty()) {
             int currentMove = moves.get(0);
             moves.remove(0);
-            Board currentboard = new Board(original);
+            Board currentboard = new Board(board);
             makeStep(currentMove);
-            int wert = min(!myTurn, depth - 1, currentMove, maxWert, beta);
+            int value = max(!myTurn, depth - 1, currentMove, alpha, beta);
 
-            if (wert > maxWert) {
-                maxWert = wert;
-                if (maxWert >= beta)
+            if (value < beta) {
+                beta = value;
+                if (beta <= alpha) {
+                    break;
+                }
+            }
+            this.board = new Board(currentboard);
+        }
+        return beta;
+    }
+
+    private int max(boolean myTurn, int depth, int moveIndex, int alpha, int beta) {
+        if (depth == 0 || !board.isAnyMoveLeft(myTurn, redSide)) {
+            return getStepHeuristic(moveIndex);
+        }
+        ArrayList<Integer> moves = board.getAllPossibleMoves(myTurn, redSide);
+        while (!moves.isEmpty()) {
+            int currentMove = moves.get(0);
+            moves.remove(0);
+            Board currentboard = new Board(board);
+            makeStep(currentMove);
+            int value = min(!myTurn, depth - 1, currentMove, alpha, beta);
+
+            if (value > alpha) {
+                alpha = value;
+                if (alpha >= beta)
                     break;
                 if (depth == LEVEL)
                     bestMoveIndex = currentMove;
             }
-            undoStep(currentboard);
+            this.board = new Board(currentboard);
         }
-        return maxWert;
+        return alpha;
     }
 
-    private int min(boolean myTurn, int depth, int move, int alpha, int beta) {
-        if (depth == 0 || !original.isAnyMoveLeft(myTurn, redSide)) {
-            return evaluateStep(move);
-        }
-
-        int minWert = beta;
-        ArrayList<Integer> moves = original.getAllPossibleMoves(myTurn, redSide);
-        while (!moves.isEmpty()) {
-            int currentMove = moves.get(0);
-            moves.remove(0);
-            Board currentboard = new Board(original);
-            makeStep(currentMove);
-            int wert = max(!myTurn, depth - 1, currentMove, alpha, minWert);
-
-            if (wert < minWert) {
-                minWert = wert;
-                if (minWert <= alpha) {
-                    break;
-                }
-            }
-            undoStep(currentboard);
-        }
-        return minWert;
-    }
-
-    private void makeStep(Integer index) {
-        original.makeStep(index);
-    }
-
-    private void undoStep(Board board) {
-        original = new Board(board);
-    }
-
-    private int evaluateStep(int move) {
-
-        int value = 0;
+    private int getStepHeuristic(int move) {
+        int heuristicValue = 0;
         if (redSide) {
-            //do I win beans? does the opponent win beans?
-            value += 0.5 * original.getPointsRed();
-            value -= original.getPointsBlue();
+            heuristicValue += board.getPointsRed();
+            heuristicValue -= 2 * board.getPointsBlue();
 
-            //attackable own 1, 3 and 5 are problematic
+            // potentially protect own endangered beans {1,3,5}
             for (int i = 0; i < 6; i++) {
-                if (original.getGameState()[i] == 1 || original.getGameState()[i] == 3
-                    || original.getGameState()[i] == 5) {
+                int endangeredIndex = board.getGameState()[i];
+                if (endangeredIndex == 1 || endangeredIndex == 3 || endangeredIndex == 5) {
                     for (int j = 6; j <= 11; j++) {
-                        if (original.getGameState()[j] == j - i
-                            || original.getGameState()[j] == 12 + j - i) {
-                            value -= original.getGameState()[i] * 2;
+                        int potentialDangerSource = board.getGameState()[j];
+                        if (potentialDangerSource == j - i || potentialDangerSource == 12 + j - i) {
+                            heuristicValue -= endangeredIndex * 4;
                         }
                     }
                 }
             }
 
-            //attackable 1, 3 and 5 on opponent's side are good
+            // potentially attack enemy's endangered beans {1,3,5}
             for (int i = 6; i <= 11; i++) {
-                if (original.getGameState()[i] == 1 || original.getGameState()[i] == 3
-                    || original.getGameState()[i] == 5) {
+                int endangeredIndex = board.getGameState()[i];
+                if (endangeredIndex == 1 || endangeredIndex == 3 || endangeredIndex == 5) {
                     for (int j = 0; j < 6; j++) {
-                        if (original.getGameState()[j] == j - i
-                            || original.getGameState()[j] == 12 + j - i) {
-                            value += original.getGameState()[i] * 2;
+                        int potentialDangerSource = board.getGameState()[j];
+                        if (potentialDangerSource == j - i || potentialDangerSource == 12 + j - i) {
+                            heuristicValue += potentialDangerSource * 4;
                         }
                     }
                 }
             }
 
-            //too many own empty fields are bad
+            // rich fields
+            for (int i = 0; i < 6; i++) {
+                if (board.getGameState()[i] >= 6) {
+                    heuristicValue += 2;
+                }
+            }
+            for (int i = 6; i <= 11; i++) {
+                if (board.getGameState()[i] >= 6) {
+                    heuristicValue -= 2;
+                }
+            }
+
+            // rich fields when little opportunities
+            if (board.getGameState()[move - 1] >= 10 && move - 1 < 6) {
+                heuristicValue += 6;
+            }
+            if (board.getGameState()[move - 1] >= 10 && move - 1 >= 6) {
+                heuristicValue -= 6;
+            }
+
+            // empty fields
             int count = 0;
             for (int i = 0; i < 6; i++) {
-                if (original.getGameState()[i] == 0) {
+                if (board.getGameState()[i] == 0) {
                     count++;
                 }
             }
             switch (count) {
                 case 0:
-                    value += 2;
+                    heuristicValue += 4;
                     break;
                 case 1:
-                    value++;
+                    heuristicValue += 2;
                     break;
                 case 2:
                     break;
                 case 3:
-                    value--;
+                    heuristicValue -= 2;
                     break;
                 case 4:
-                    value -= 3;
+                    heuristicValue -= 6;
                     break;
                 case 5:
-                    value -= 5;
+                    heuristicValue -= 10;
                     break;
                 case 6:
-                    value -= 7;
+                    heuristicValue -= 14;
                     break;
             }
 
-            //many empty fields on opponent's side are good
+            // enemy's empty fields
             count = 0;
             for (int i = 6; i <= 11; i++) {
-                if (original.getGameState()[i] == 0) {
+                if (board.getGameState()[i] == 0) {
                     count++;
                 }
             }
             switch (count) {
                 case 0:
-                    value -= 2;
+                    heuristicValue -= 4;
                     break;
                 case 1:
-                    value--;
+                    heuristicValue -= 2;
                     break;
                 case 2:
                     break;
                 case 3:
-                    value++;
+                    heuristicValue += 2;
                     break;
                 case 4:
-                    value += 3;
+                    heuristicValue += 6;
                     break;
                 case 5:
-                    value += 5;
+                    heuristicValue += 10;
                     break;
                 case 6:
-                    value += 7;
+                    heuristicValue += 14;
                     break;
-            }
-
-
-            //owning fields with a lot beans is good, it's bad, if the opponent has some
-            for (int i = 0; i < 6; i++) {
-                if (original.getGameState()[i] >= 6) {
-                    value++;
-                }
-            }
-            for (int i = 6; i <= 11; i++) {
-                if (original.getGameState()[i] >= 6) {
-                    value--;
-                }
-            }
-
-            //using high numbers if one's low on opportunities is good
-            if (original.getGameState()[move - 1] >= 10 && move - 1 < 6) {
-                value += 3;
-            }
-            if (original.getGameState()[move - 1] >= 10 && move - 1 >= 6) {
-                value -= 3;
             }
         } else {
-            //do I win beans? does the opponent win beans?
-            //  value += 2*future.getPointsBlue()-copy.getPointsBlue();
-            //  value -= 4*future.getPointsRed()-copy.getPointsRed();
+            heuristicValue += board.getPointsBlue();
+            heuristicValue -= 2 * board.getPointsRed();
 
-            value += 0.5 * original.getPointsBlue();
-            value -= original.getPointsRed();
-
-            //attackable own 1, 3 and 5 are problematic
-            for (int i = 6; i <= 11; i++) {
-                if (original.getGameState()[i] == 1 || original.getGameState()[i] == 3
-                    || original.getGameState()[i] == 5) {
-                    for (int j = 0; j < 6; j++) {
-                        if (original.getGameState()[j] == j - i
-                            || original.getGameState()[j] == 12 + j - i) {
-                            value -= original.getGameState()[i] * 2;
-                        }
-                    }
-                }
-            }
-
-            //attackable 1, 3 and 5 on opponent's side are good
+            // potentially attack enemy's endangered beans {1,3,5}
             for (int i = 0; i < 6; i++) {
-                if (original.getGameState()[i] == 1 || original.getGameState()[i] == 3
-                    || original.getGameState()[i] == 5) {
+                int endangeredIndex = board.getGameState()[i];
+                if (endangeredIndex == 1 || endangeredIndex == 3 || endangeredIndex == 5) {
                     for (int j = 6; j <= 11; j++) {
-                        if (original.getGameState()[j] == j - i
-                            || original.getGameState()[j] == 12 + j - i) {
-                            value += original.getGameState()[i] * 2;
+                        int potentialDangerSource = board.getGameState()[j];
+                        if (potentialDangerSource == j - i || potentialDangerSource == 12 + j - i) {
+                            heuristicValue += endangeredIndex * 4;
                         }
                     }
                 }
             }
 
-            //too many own empty fields are bad
+            // potentially protect own endangered beans {1,3,5}
+            for (int i = 6; i <= 11; i++) {
+                int endangeredIndex = board.getGameState()[i];
+                if (endangeredIndex == 1 || endangeredIndex == 3 || endangeredIndex == 5) {
+                    for (int j = 0; j < 6; j++) {
+                        int potentialDangerSource = board.getGameState()[j];
+                        if (potentialDangerSource == j - i || potentialDangerSource == 12 + j - i) {
+                            heuristicValue -= potentialDangerSource * 4;
+                        }
+                    }
+                }
+            }
+
+            // rich fields
+            for (int i = 6; i <= 11; i++) {
+                if (board.getGameState()[i] >= 6) {
+                    heuristicValue += 2;
+                }
+            }
+            for (int i = 0; i < 6; i++) {
+                if (board.getGameState()[i] >= 6) {
+                    heuristicValue -= 2;
+                }
+            }
+
+            // rich fields on low opportunities
+            if (board.getGameState()[move - 1] >= 10 && move - 1 >= 6) {
+                heuristicValue += 6;
+            }
+            if (board.getGameState()[move - 1] >= 10 && move - 1 < 6) {
+                heuristicValue -= 6;
+            }
+
+            // empty fields
             int count = 0;
             for (int i = 6; i <= 11; i++) {
-                if (original.getGameState()[i] == 0) {
+                if (board.getGameState()[i] == 0) {
                     count++;
                 }
             }
             switch (count) {
                 case 0:
-                    value += 2;
+                    heuristicValue += 4;
                     break;
                 case 1:
-                    value++;
+                    heuristicValue += 2;
                     break;
                 case 2:
                     break;
                 case 3:
-                    value--;
+                    heuristicValue -= 2;
                     break;
                 case 4:
-                    value -= 2;
+                    heuristicValue -= 4;
                     break;
                 case 5:
-                    value -= 3;
+                    heuristicValue -= 6;
                     break;
                 case 6:
-                    value -= 4;
+                    heuristicValue -= 8;
                     break;
             }
 
-            //many empty fields on opponent's side are good
+            //  empty fields on enemy's side
             count = 0;
             for (int i = 0; i < 6; i++) {
-                if (original.getGameState()[i] == 0) {
+                if (board.getGameState()[i] == 0) {
                     count++;
                 }
             }
             switch (count) {
                 case 0:
-                    value -= 2;
+                    heuristicValue -= 4;
                     break;
                 case 1:
-                    value--;
+                    heuristicValue -= 2;
                     break;
                 case 2:
                     break;
                 case 3:
-                    value++;
+                    heuristicValue += 2;
                     break;
                 case 4:
-                    value += 2;
+                    heuristicValue += 4;
                     break;
                 case 5:
-                    value += 3;
+                    heuristicValue += 6;
                     break;
                 case 6:
-                    value += 4;
+                    heuristicValue += 8;
                     break;
             }
-
-            //owning fields with a lot beans is good, it's bad, if the opponent has some
-            for (int i = 6; i <= 11; i++) {
-                if (original.getGameState()[i] >= 6) {
-                    value++;
-                }
-            }
-            for (int i = 0; i < 6; i++) {
-                if (original.getGameState()[i] >= 6) {
-                    value--;
-                }
-            }
-
-            //using high numbers if one's low on opportunities is good
-            if (original.getGameState()[move - 1] >= 10 && move - 1 >= 6) {
-                value += 3;
-            }
-            if (original.getGameState()[move - 1] >= 10 && move - 1 < 6) {
-                value -= 3;
-            }
         }
-        return value;
+        return heuristicValue;
     }
 }
