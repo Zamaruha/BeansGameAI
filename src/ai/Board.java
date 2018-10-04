@@ -80,12 +80,10 @@ public class Board {
             throw new Error("amount == 0");
         }
 
-        // distribute beans
         for (int i = 0; i < amount; i++) {
             gameState[(stepIndex + i) % 12]++;
         }
 
-        // calculate point and clear beans
         int lastPosition = (insideStepIndex + amount) % 12;
         while (gameState[lastPosition] == 2 || gameState[lastPosition] == 4
             || gameState[lastPosition] == 6) {
@@ -102,40 +100,7 @@ public class Board {
             }
         }
     }
-
-    //    /**
-    //     * @param index       index of field that was chosen for the move
-    //     * @param sharedBeans number of shared beans (so you can calculate the last field)
-    //     * @param playerOne   to check wich player gets the beans
-    //     */
-    //    private void testField(int index, int sharedBeans, boolean playerOne) {
-    //
-    //        // check the field
-    //        switch (gameState[(sharedBeans + index - 1) % 12]) {
-    //
-    //            case 2:
-    //            case 4:
-    //            case 6:
-    //
-    //                // put beans in right treasury
-    //                if (playerOne) {
-    //                    pointsRed += gameState[(sharedBeans + index - 1) % 12];
-    //                } else {
-    //                    pointsBlue += gameState[(sharedBeans + index - 1) % 12];
-    //                }
-    //                // delete the hole
-    //                gameState[(sharedBeans + index - 1) % 12] = 0;
-    //
-    //                // recursive testing of all other fields
-    //                if (index == 1) {
-    //                    testField(12, sharedBeans, playerOne);
-    //                } else {
-    //                    testField(index - 1, sharedBeans, playerOne);
-    //                }
-    //        }
-    //    }
-
-
+    
     public boolean isAnyMoveLeft(boolean myTurn, boolean redPlayer) {
         if ((myTurn && redPlayer) || (!myTurn && !redPlayer)) {
             for (int i = 0; i < 6; i++) {

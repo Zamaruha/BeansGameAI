@@ -12,41 +12,19 @@ public class MyAI extends AI {
         return "StandardAI";
     }
 
-
-
-
-    /**
-     * @param enemyIndex The index that refers to the field chosen by the enemy in the last action.If
-     *                   this value is 0, than the AI is the starting player and has to specify the first move.
-     * @return Return The index that refers to the field of the action chosen by this AI.
-     */
     public int getMove(int enemyIndex) {
         int index = 0;
         // This Ai starts the game
         if (enemyIndex < 1) {
             firstPlayer = true;
-            System.out.println("Lets play!");
         }
-
-        // represent enemies move on Board
         original.makeStep(enemyIndex);
-
-        // choose own move
         index = getAlphaBeta();
-
-        // represent own move on Board
         original.makeStep(index);
-
-        // send own move
         return index;
 
     }
 
-    /**
-     * Code from Wikipedia for Alpha-Beta-Pruning-Strategy
-     *
-     * @return move index
-     */
     private int getAlphaBeta() {
         bestMoveIndex = -1;
         max(true, LEVEL, 0, -1000, 1000);
@@ -59,14 +37,6 @@ public class MyAI extends AI {
         }
     }
 
-    /**
-     * Code from Wikipedia for Alpha-Beta-Pruning-Strategy
-     *
-     * @param myTurn
-     * @param depth
-     * @param move
-     * @return
-     */
     private int max(boolean myTurn, int depth, int move, int alpha, int beta) {
         if (depth == 0 || !original.isAnyMoveLeft(myTurn, firstPlayer)) {
             return evaluateStep(move);
@@ -90,18 +60,9 @@ public class MyAI extends AI {
             }
             undoStep(currentboard);
         }
-        // System.out.println(maxWert);
         return maxWert;
     }
 
-    /**
-     * Code from Wikipedia for Alpha-Beta-Pruning-Strategy
-     *
-     * @param myTurn
-     * @param depth
-     * @param move
-     * @return
-     */
     private int min(boolean myTurn, int depth, int move, int alpha, int beta) {
         if (depth == 0 || !original.isAnyMoveLeft(myTurn, firstPlayer)) {
             return evaluateStep(move);
@@ -124,71 +85,15 @@ public class MyAI extends AI {
             }
             undoStep(currentboard);
         }
-        //  System.out.println(minWert);
         return minWert;
     }
 
-    /**
-     * @param index
-     */
     private void makeStep(Integer index) {
         original.makeStep(index);
     }
 
-    /**
-     * undo the move
-     *
-     * @param board
-     */
     private void undoStep(Board board) {
         original = new Board(board);
-    }
-
-    /**
-     * check, if the regarded player or the opponent has only empty fields; value-=15 if player has
-     * them, value+=15 if opponent has them, return original value if none is the case (or both is)
-     *
-     * @param value
-     * @param k
-     * @return
-     */
-    private int checkEmptyField(int value, int k) {
-
-        // only empty fields on my side is critical
-        int count = 0;
-        for (int i = 0; i < 6; i++) {
-            if (original.getGameState()[i] == 0) {
-                count++;
-            }
-        }
-        if (k == 2) {
-            if (count == 6) {
-                value -= 15;
-            }
-        } else {
-            if (count == 6) {
-                value += 15;
-            }
-        }
-
-        // only empty fields on opponent's side is great
-        count = 0;
-        for (int i = 6; i < 12; i++) {
-            if (original.getGameState()[i] == 0) {
-                count++;
-            }
-        }
-        if (k == 2) {
-            if (count == 6) {
-                value += 15;
-            }
-        } else {
-            if (count == 6) {
-                value -= 15;
-            }
-        }
-
-        return value;
     }
 
     private int evaluateStep(int move) {
