@@ -63,14 +63,11 @@ public class Board {
             throw new Error("out ouf bounds");
         }
         // decide on player color
-        boolean redPlayer;
-        if (stepIndex < 6) {
-            redPlayer = true;
-        } else {
+        boolean redPlayer = true;
+        if (stepIndex >= 6) {
             redPlayer = false;
         }
-        //System.out.println(this);
-        // get amount of beans
+       // get amount of beans
         int amount = gameState[insideStepIndex];
        // System.out.println(insideStepIndex);
         gameState[insideStepIndex] = 0;
@@ -100,7 +97,7 @@ public class Board {
             }
         }
     }
-    
+
     public boolean isAnyMoveLeft(boolean myTurn, boolean redPlayer) {
         if ((myTurn && redPlayer) || (!myTurn && !redPlayer)) {
             for (int i = 0; i < 6; i++) {

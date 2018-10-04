@@ -5,7 +5,7 @@ import java.util.ArrayList;
 public class MyAI extends AI {
     byte LEVEL = 15;
     Board original = new Board();
-    boolean firstPlayer = false;
+    boolean redSide = false;
     int bestMoveIndex = -1;
 
     @Override public String getName() {
@@ -16,13 +16,12 @@ public class MyAI extends AI {
         int index = 0;
         // This Ai starts the game
         if (enemyIndex < 1) {
-            firstPlayer = true;
+            redSide = true;
         }
         original.makeStep(enemyIndex);
         index = getAlphaBeta();
         original.makeStep(index);
         return index;
-
     }
 
     private int getAlphaBeta() {
@@ -38,12 +37,12 @@ public class MyAI extends AI {
     }
 
     private int max(boolean myTurn, int depth, int move, int alpha, int beta) {
-        if (depth == 0 || !original.isAnyMoveLeft(myTurn, firstPlayer)) {
+        if (depth == 0 || !original.isAnyMoveLeft(myTurn, redSide)) {
             return evaluateStep(move);
         }
 
         int maxWert = alpha;
-        ArrayList<Integer> moves = original.getAllPossibleMoves(myTurn, firstPlayer);
+        ArrayList<Integer> moves = original.getAllPossibleMoves(myTurn, redSide);
         while (!moves.isEmpty()) {
             int currentMove = moves.get(0);
             moves.remove(0);
@@ -64,12 +63,12 @@ public class MyAI extends AI {
     }
 
     private int min(boolean myTurn, int depth, int move, int alpha, int beta) {
-        if (depth == 0 || !original.isAnyMoveLeft(myTurn, firstPlayer)) {
+        if (depth == 0 || !original.isAnyMoveLeft(myTurn, redSide)) {
             return evaluateStep(move);
         }
 
         int minWert = beta;
-        ArrayList<Integer> moves = original.getAllPossibleMoves(myTurn, firstPlayer);
+        ArrayList<Integer> moves = original.getAllPossibleMoves(myTurn, redSide);
         while (!moves.isEmpty()) {
             int currentMove = moves.get(0);
             moves.remove(0);
@@ -99,7 +98,7 @@ public class MyAI extends AI {
     private int evaluateStep(int move) {
 
         int value = 0;
-        if (firstPlayer) {
+        if (redSide) {
             //do I win beans? does the opponent win beans?
             value += 0.5 * original.getPointsRed();
             value -= original.getPointsBlue();
